@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 Control & Touch Monitor via MQTT</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+  <h1>ESP32 LED Control via MQTT</h1>
+
+  <button onclick="turnOn()">Turn ON</button>
+  <button onclick="turnOff()">Turn OFF</button>
+
+  <h2>ESP32 LED Status:</h2>
+  <p id="ledStatus">Waiting for status...</p>
+
+  <h2>Touch Sensor History:</h2>
+  <ul id="touchHistory"></ul>
+
+  <script>
+    const clientId = "webClient_" + Math.random().toString(16).substr(2, 8);
+    const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt", {
+      clientId: clientId,
+    });
+
+    client.on("connect", function () {
+      console.log("Connected to MQTT broker");
+      client.subscribe("ESP32/STATUS");
+      client.subscribe("ESP32/TOUCH");
+    });
+
+    client.on("message", function (topic, message) {
+      if (topic === "ESP32/STATUS") {
+        document.getElementById("ledStatus").innerText = message.toString();
+      } else if (topic === "ESP32/TOUCH") {
+        const historyList = document.getElementById("touchHistory");
+        const newItem = document.createElement("li");
+        newItem.innerText = `${new Date().toLocaleTimeString()} - ${message}`;
+        historyList.insertBefore(newItem, historyList.firstChild);  // add on top
+        if (historyList.children.length > 10) {
+          historyList.removeChild(historyList.lastChild);  // limit history to 10 entries
+        }
+      }
+    });
+
+    function turnOn() {
+      client.publish("ESP32/LED", "ON");
+    }
+
+    function turnOff() {
+      client.publish("ESP32/LED", "OFF");
+    }
+  </script>
+</body>
+</html>
